@@ -11,13 +11,14 @@
  */
 
 /** read in the X-headers required to make any request to the ChurchSuite API
- * @return array containing the parsed X-headers
+ * @param string $filename JSON file where X-headers are stored (in working directory)
+ * @return array $x_headers Array containing the parsed X-header"s
  */
-function get_x_headers() {
-    $x_headers = json_decode(file_get_contents("x_headers.json"));
+function get_x_headers(string $filename) : array{
+    $x_headers = json_decode(file_get_contents($filename));
     foreach(array("X_Account", "X_Application", "X_Auth") as $header_name) {
         if(!array_key_exists($header_name,$x_header)) {
-            throw new exception("Missing ".$header_name." Header in x_headers.json");
+            throw new exception("Missing ".$header_name." header in x_headers.json");
         }
     }
     return $x_headers;
