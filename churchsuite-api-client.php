@@ -10,9 +10,10 @@
  * Licene URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html 
  */
 
-/** read in the X-headers required to make any request to the ChurchSuite API
+/**
+ * read in the X-headers required to make any request to the ChurchSuite API
  * @param string $filename JSON file where X-headers are stored (in working directory)
- * @return array $x_headers Array containing the parsed X-header"s
+ * @return array $x_headers Array containing the parsed X-headers
  */
 function get_x_headers(string $filename) : array{
     $x_headers = json_decode(file_get_contents($filename));
