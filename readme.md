@@ -1,1 +1,1 @@
-A wordpress plug-in enabling structured communication with the [Churchsuite-API](https://github.com/ChurchSuite/churchsuite-api) 
+A WordPress plug-in enabling structured communication with the [ChurchSuite-API](https://github.com/ChurchSuite/churchsuite-api) 
