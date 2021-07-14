@@ -1,0 +1,5 @@
+{
+    "X_Account": "ACCOUNT_NAME",
+    "X-Application": "APPLICATION_NAME",
+    "X-Auth": "AUTHORISATION_TOKEN"
+}
