@@ -15,15 +15,17 @@ namespace cs_api_client;
 define("CSAPI_ROOT_URL","https://api.churchsuite.co.uk/v1/");
 define("CSAPI_X_HEADERS_FILE","x_headers.json");
 
+/**
+ * Initialise 
+ */
 function activate() {
-    // create the periodic requests table if it doesn't already exist
     global $wpdb;
 
     $table_name = $wpdb->prefix . "cs_api_client_periodic_requests";
     $charset_collate = $wpdb->get_charset_collate();
 
     $sql = "CREATE TABLE $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        id mediumint(6) NOT NULL AUTO_INCREMENT,
         url varchar(100) NOT NULL,
         callback varchar(100) NOT NULL,
         periodic boolean NOT NULL,
@@ -37,11 +39,11 @@ function activate() {
 register_activation_hook(__FILE__, __NAMESPACE__.'\activate');
 // on disable)
 
-// TODO: on disable, removeperiodic requests function from cron scheduler
+// TODO: on disable, remove periodic requests function from cron scheduler
 // TODO: remove periodic requests table on uninstall
 
 /**
- * read in the X-headers required to make any request to the ChurchSuite API
+ * Read in the X-headers required to make any request to the ChurchSuite API
  * @return array $x_headers Array containing the parsed X-headers
  */
 function get_x_headers(string $filename) : array{
@@ -56,16 +58,16 @@ function get_x_headers(string $filename) : array{
 }
 
 /**
- * main function handles updating periodic requests table and making
- * instantaneous requests
+ * Handle Incomming API Requests on `wp_loaded`
  */
 function main_loop() {
     $request_headers = array_merge(get_x_headers(CSAPI_X_HEADERS_FILE),
-            ["Content_Type" => "application/json"];
+            ["Content_Type" => "application/json"]);
 
     $requests = apply_filter(__NAMESPACE__ . 'get_requests', []);
     if(array_unique($requests)<>$requests)
             throw new exception ("Duplicate API requests present");
+    // TODO: validate requests
 
     $stored_periodic_requests = get_stored_periodic_requests(); 
     update_periodic_requests($stored_periodic_requests, $requests);
@@ -77,16 +79,21 @@ function main_loop() {
 }
 add_action('wp_loaded', __NAMESPACE__ . 'main_loop');
 
+/**
+ * Update Stored Periodic Requests Against $requests
+ */
 function update_periodic_requests(array $stored_periodic_requests,
         array $requests) {
-    // get all non-periodic requests and add to $instantaneous_requests and
-    // remove from requests    
+    $periodic_requests = array_filter($requests, function($x) {
+                            return $x['periodic'];});
+                            
+    foreach(array_diff($stored_periodic_requests, $periodic_requests) as $request) {
+        // TODO: remove respective entry from table
+    }
 
-    // set comparison periodic_requests<->requests
-    // lhs: remove from table
-    array_diff($stored_periodic_requests, $requests);
-    // rhs: add to table
-    array_diff($requests, $stored_periodic_requests);
+    foreach(array_diff($periodic_requests, $stored_periodic_requests) as $request) {
+        // TODO: add respective entry to table
+    }
 }
 
 /**
