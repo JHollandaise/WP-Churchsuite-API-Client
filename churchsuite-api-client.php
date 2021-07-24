@@ -20,10 +20,11 @@ define("CSAPI_X_HEADERS_FILE","x_headers.json");
  * @return array $x_headers Array containing the parsed X-headers
  */
 function get_x_headers(string $filename) : array{
-    $x_headers = json_decode(file_get_contents($filename));
-    foreach(array("X_Account", "X_Application", "X_Auth") as $header_name) {
-        if(!array_key_exists($header_name, $x_header)) {
-            throw new exception(
+    $x_headers = json_decode(file_get_contents(dirname(__FILE__) . "/$filename"),
+                    true);
+    foreach(array("X-Account", "X-Application", "X-Auth") as $header_name) {
+        if(!array_key_exists($header_name, $x_headers)) {
+            throw new \Exception(
                 "Missing $header_name in x_headers.json");
         }
     }
@@ -35,9 +36,9 @@ function get_x_headers(string $filename) : array{
  */
 function main_loop() {
 
-    $requests = apply_filter(__NAMESPACE__ . '\\request_submissions', []);
+    $requests = apply_filters(__NAMESPACE__ . '\\request_submissions', []);
     if(array_unique($requests)<>$requests)
-            throw new exception ("Duplicate API requests present");
+            throw new \Exception ("Duplicate API requests present");
 
     $requests_to_make = array_filter($requests, function($x)
                         {return get_transient($x['callback'])!==$x;});
@@ -48,8 +49,9 @@ function main_loop() {
 
     $request_headers = array_merge(get_x_headers(CSAPI_X_HEADERS_FILE),
             ["Content_Type" => "application/json"]);
-    $unique_requests = array_unique(array_map($requests_to_make, function($x)
-                        {return ['url'=>$x['url'], 'method'=>$x['method']];}));
+    $unique_requests = array_unique(array_map(function($x)
+                        {return ['url'=>$x['url'], 'method'=>$x['method']];},
+                        $requests_to_make));
     foreach($unique_requests as $request) {
         if($request['method']=='GET') {
             // TODO: add HEADER request for update checking
@@ -57,7 +59,7 @@ function main_loop() {
                 ['headers' => $request_headers]);
         }
         // TODO: add POST request
-        else throw new exception(
+        else throw new \Exception(
                 "Invalid request method: ".$request['method']);
         do_action(__NAMESPACE__."\\".$request['method']."_".$request['url'],
                 $response);
@@ -71,7 +73,8 @@ function main_loop() {
         set_transient($request['callback'], $request, $request['period']);
     }
 
-    $request_caches_to_clear = apply_filter(__NAMESPACE__ . '\\cache_clear_callback' []);
+    $request_caches_to_clear = apply_filters(
+                                __NAMESPACE__ . '\\cache_clear_callback', []);
     foreach($request_caches_to_clear as $request_cache) {
         delete_transient($request_cache);
     }
