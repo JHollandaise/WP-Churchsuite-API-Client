@@ -16,33 +16,6 @@ define("CSAPI_ROOT_URL","https://api.churchsuite.co.uk/v1/");
 define("CSAPI_X_HEADERS_FILE","x_headers.json");
 
 /**
- * Initialise 
- */
-function activate() {
-    global $wpdb;
-
-    $table_name = $wpdb->prefix . "cs_api_client_periodic_requests";
-    $charset_collate = $wpdb->get_charset_collate();
-
-    $sql = "CREATE TABLE $table_name (
-        id mediumint(6) NOT NULL AUTO_INCREMENT,
-        url varchar(100) NOT NULL,
-        callback varchar(100) NOT NULL,
-        periodic boolean NOT NULL,
-        PRIMARY KEY  (id)
-        ) $charset_collate;";
-    
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-    // TODO: add periodic requests funciton to cron scheduler (remove
-}
-register_activation_hook(__FILE__, __NAMESPACE__.'\activate');
-// on disable)
-
-// TODO: on disable, remove periodic requests function from cron scheduler
-// TODO: remove periodic requests table on uninstall
-
-/**
  * Read in the X-headers required to make any request to the ChurchSuite API
  * @return array $x_headers Array containing the parsed X-headers
  */
@@ -61,53 +34,45 @@ function get_x_headers(string $filename) : array{
  * Handle Incomming API Requests on `wp_loaded`
  */
 function main_loop() {
-    $request_headers = array_merge(get_x_headers(CSAPI_X_HEADERS_FILE),
-            ["Content_Type" => "application/json"]);
 
-    $requests = apply_filter(__NAMESPACE__ . 'get_requests', []);
+    $requests = apply_filter(__NAMESPACE__ . '\\request_submissions', []);
     if(array_unique($requests)<>$requests)
             throw new exception ("Duplicate API requests present");
-    // TODO: validate requests
 
-    $stored_periodic_requests = get_stored_periodic_requests(); 
-    update_periodic_requests($stored_periodic_requests, $requests);
-
-    // instantaneous requests are all non-periodic and any newly added periodic
-    // requests
-    $instantaneous_requests = array_diff($requests, $stored_periodic_requests);
-    make_requests($request_headers, $instantaneous_requests);
-}
-add_action('wp_loaded', __NAMESPACE__ . 'main_loop');
-
-/**
- * Update Stored Periodic Requests Against $requests
- */
-function update_periodic_requests(array $stored_periodic_requests,
-        array $requests) {
-    $periodic_requests = array_filter($requests, function($x) {
-                            return $x['periodic'];});
-                            
-    foreach(array_diff($stored_periodic_requests, $periodic_requests) as $request) {
-        // TODO: remove respective entry from table
+    $requests_to_make = array_filter($requests, function($x)
+                        {return get_transient($x['callback'])!==$x;});
+    foreach($requests_to_make as $request) {
+        add_action(__NAMESPACE__."\\".$request['method']."_".$request['url'],
+                $request['callback'], $request['priority'], 1);
     }
 
-    foreach(array_diff($periodic_requests, $stored_periodic_requests) as $request) {
-        // TODO: add respective entry to table
+    $request_headers = array_merge(get_x_headers(CSAPI_X_HEADERS_FILE),
+            ["Content_Type" => "application/json"]);
+    $unique_requests = array_unique(array_map($requests_to_make, function($x)
+                        {return ['url'=>$x['url'], 'method'=>$x['method']];}));
+    foreach($unique_requests as $request) {
+        if($request['method']=='GET') {
+            // TODO: add HEADER request for update checking
+            $response = wp_remote_get(/*TODO: populate request*/);
+        elseif($request['method']=='POST') {
+            $response = wp_remote_post(/*TODO: populate request*/);
+        else throw new exception(
+                "Invalid request method: ".$request['method']);
+        do_action(__NAMESPACE__."\\".$request['method']."_".$request['url'],
+                $response);
+    }
+
+    // NOTE: this must be done as WP Transients treat (transient->expiration)==0
+    // as never expire (rather than expire immediately)
+    $requests_to_cache = array_filter($requests_to_make, function($x)
+                            {return $x['period']<>0;});
+    foreach($requests_to_cache as $request) {
+        set_transient($request['callback'], $request, $request['period']);
+    }
+
+    $request_caches_to_clear = apply_filter(__NAMESPACE__ . '\\cache_clear_callback' []);
+    foreach($request_caches_to_clear as $request_cache) {
+        delete_transient($request_cache);
     }
 }
-
-/**
- * makes a set of requests to the ChurchSuite API server and handles the
- * responses
- */
-function make_requests(array $request_headers, array $requests) {
-    foreach($requests as $request) {
-        // TODO: make requests and handle response
-        // includes sending the response over the the update handler
-    }
-}
-
-
-function make_request($request_url) {
-   // TODO: make request and handle response 
-}
+add_action('wp_loaded', __NAMESPACE__ . '\\main_loop');
