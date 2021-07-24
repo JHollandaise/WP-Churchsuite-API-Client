@@ -55,6 +55,7 @@ function main_loop() {
             // TODO: add HEADER request for update checking
             $response = wp_remote_get(CSAPI_ROOT_URL . $request['url'],
                 ['headers' => $request_headers]);
+        }
         // TODO: add POST request
         else throw new exception(
                 "Invalid request method: ".$request['method']);
