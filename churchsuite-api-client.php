@@ -53,9 +53,9 @@ function main_loop() {
     foreach($unique_requests as $request) {
         if($request['method']=='GET') {
             // TODO: add HEADER request for update checking
-            $response = wp_remote_get(/*TODO: populate request*/);
-        elseif($request['method']=='POST') {
-            $response = wp_remote_post(/*TODO: populate request*/);
+            $response = wp_remote_get(CSAPI_ROOT_URL . $request['url'],
+                ['headers' => $request_headers]);
+        // TODO: add POST request
         else throw new exception(
                 "Invalid request method: ".$request['method']);
         do_action(__NAMESPACE__."\\".$request['method']."_".$request['url'],
